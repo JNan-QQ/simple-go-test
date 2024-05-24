@@ -12,7 +12,7 @@ package test
 
 import (
 	"fmt"
-	sgt "gitee.com/jn-qq/simple-go-test"
+	sgt "gitee.com/jn-qq/simple-go-test/logger"
 	"html/template"
 	"net/http"
 	"testing"

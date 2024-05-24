@@ -8,9 +8,11 @@
   See the Mulan PSL v2 for more details.
 */
 
-package simple_go_test
+package runner
 
 import (
+	"gitee.com/jn-qq/simple-go-test/config"
+	"gitee.com/jn-qq/simple-go-test/logger"
 	"regexp"
 	"slices"
 	"sync"
@@ -41,12 +43,12 @@ type TestPackage struct {
 }
 
 // SelectBy 根据正则表达式过滤测试用例
-func (t *TestPackage) SelectBy(by By, reg string) *TestPackage {
+func (t *TestPackage) SelectBy(by config.By, reg string) *TestPackage {
 	if reg == "" {
 		return t
 	}
 	switch by {
-	case ByTagName, ByNotTagName:
+	case config.ByTagName, config.ByNotTagName:
 		// 遍历测试用例tag
 		for i := len(t.Tests) - 1; i >= 0; i-- {
 			ts := t.Tests[i].Init()
@@ -57,12 +59,12 @@ func (t *TestPackage) SelectBy(by By, reg string) *TestPackage {
 					break
 				}
 			}
-			if (hs && by == ByNotTagName) || (!hs && by == ByTagName) {
+			if (hs && by == config.ByNotTagName) || (!hs && by == config.ByTagName) {
 				t.Tests = slices.Delete(t.Tests, i, i+1)
 			}
 		}
 
-	case ByTestName:
+	case config.ByTestName:
 		for i := len(t.Tests) - 1; i >= 0; i-- {
 			ts := t.Tests[i].Init()
 			hs, _ := regexp.MatchString(reg, ts.Name)
@@ -71,7 +73,7 @@ func (t *TestPackage) SelectBy(by By, reg string) *TestPackage {
 			}
 		}
 
-	case ByPackageName:
+	case config.ByPackageName:
 		hs, _ := regexp.MatchString(reg, t.Name)
 		if !hs {
 			t.Tests = nil
@@ -101,35 +103,35 @@ func (t *TestPackage) SelectBy(by By, reg string) *TestPackage {
 }
 
 func (t *TestPackage) Num() int {
-	allNum = len(t.Tests)
+	config.AllNum = len(t.Tests)
 	for _, tp := range t.Child {
-		allNum += tp.Num()
+		config.AllNum += tp.Num()
 	}
-	return allNum
+	return config.AllNum
 }
 
 // Run 运行测试
-func (t *TestPackage) Run() ReportHtml {
+func (t *TestPackage) Run() logger.ReportHtml {
 
-	report := ReportHtml{Name: t.Name}
-	reportHtml = &report
+	report := logger.ReportHtml{Name: t.Name}
+	logger.ReportHtmls = &report
 	// 记录开始时间
 	report.Times = time.Now().Unix()
 
 	// 包结构初始化
 	if t.SuitSetUp != nil {
 		// 记录运行进程
-		report.step = 0
+		report.Step = 0
 		// 实例化消息对象
-		report.Setup = new(Steps)
+		report.Setup = new(logger.Steps)
 		// time
 		report.Setup.Times = time.Now().Format("2006-01-02 15:04:05")
 		// 异步调用
 		report.Setup.Result = syncRun(t.SuitSetUp)
 		// 初始化失败,停止后续运行
-		if report.Setup.Result != success {
+		if report.Setup.Result != config.Success {
 			// 记录初始化失败次数
-			setupFailNum += 1
+			config.SetupFailNum += 1
 			return report
 		}
 	}
@@ -137,15 +139,15 @@ func (t *TestPackage) Run() ReportHtml {
 	defer func() {
 		if t.SuitTearDown != nil {
 			// 记录运行进程
-			report.step = 4
+			report.Step = 4
 			// 实例化消息对象
-			report.Teardown = new(Steps)
+			report.Teardown = new(logger.Steps)
 			report.Teardown.Times = time.Now().Format("2006-01-02 15:04:05")
 			// 异步调用
 			report.Teardown.Result = syncRun(t.SuitTearDown)
-			if report.Teardown.Result != success {
+			if report.Teardown.Result != config.Success {
 				// 记录清除失败次数
-				tearDownFailNum += 1
+				config.TearDownFailNum += 1
 			}
 		}
 	}()
@@ -156,59 +158,59 @@ func (t *TestPackage) Run() ReportHtml {
 		ts := test.Init()
 
 		// 实例化测试结果对象
-		cases := &TestCases{Name: ts.Name}
+		cases := &logger.TestCases{Name: ts.Name}
 		report.Cases = append(report.Cases, *cases)
 		cases.Times = time.Now().Format("2006-01-02 15:04:05")
 
 		// 测试用例初始化
-		report.step = 1
+		report.Step = 1
 		cases.Setup.Result = syncRun(test.TestStep)
-		if cases.Setup.Result != success {
-			setupFailNum += 1
+		if cases.Setup.Result != config.Success {
+			config.SetupFailNum += 1
 			// 初始化失败跳过测试，执行清除
 			goto casesTeardown
 		}
 
 		// 运行测试步骤
-		report.step = 2
+		report.Step = 2
 		if len(ts.DDT) > 0 {
 			// 数据驱动不为空
 			var hasFailed bool
 			// 遍历数据驱动，取出数据
 			for _, ddt := range ts.DDT {
-				report.Cases[len(report.Cases)-1].Ddts = append(report.Cases[len(report.Cases)-1].Ddts, Steps{})
+				report.Cases[len(report.Cases)-1].Ddts = append(report.Cases[len(report.Cases)-1].Ddts, logger.Steps{})
 				// 将数据赋值给 Para 便于 TestStep 中用户调用
 				ts.Para = ddt
-				if syncRun(test.TestStep) != success {
+				if syncRun(test.TestStep) != config.Success {
 					hasFailed = true
 				}
 			}
 			// 判断整体运行结果
 			if hasFailed {
-				failNum += 1
-				cases.Result = fail
+				config.FailNum += 1
+				cases.Result = config.Fail
 			} else {
-				successNum += 1
-				cases.Result = success
+				config.SuccessNum += 1
+				cases.Result = config.Success
 			}
 
 		} else {
 			cases.Result = syncRun(test.TestStep)
-			if cases.Result == success {
-				successNum += 1
-			} else if cases.Result == fail {
-				failNum += 1
+			if cases.Result == config.Success {
+				config.SuccessNum += 1
+			} else if cases.Result == config.Fail {
+				config.FailNum += 1
 			} else {
-				abortNum += 1
+				config.AbortNum += 1
 			}
 		}
 
 	casesTeardown:
 		// 测试步骤清除
-		report.step = 3
+		report.Step = 3
 		cases.Teardown.Result = syncRun(test.TearDown)
-		if cases.Teardown.Result != success {
-			tearDownFailNum += 1
+		if cases.Teardown.Result != config.Success {
+			config.TearDownFailNum += 1
 		}
 	}
 
@@ -232,11 +234,11 @@ func syncRun(f func()) (r int) {
 		// 捕获异常
 		defer func() {
 			if err := recover(); err == nil {
-				r = success
+				r = config.Success
 			} else if err == "" {
-				r = abort
+				r = config.Abort
 			} else {
-				r = fail
+				r = config.Fail
 			}
 			wg.Done()
 		}()

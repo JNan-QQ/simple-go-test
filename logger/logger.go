@@ -8,15 +8,17 @@
   See the Mulan PSL v2 for more details.
 */
 
-package simple_go_test
+package logger
 
 import (
 	"fmt"
+	"gitee.com/jn-qq/simple-go-test/config"
 	"html/template"
 	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 )
 
@@ -42,20 +44,20 @@ func Logger() *os.File {
 	return file
 }
 
-var reportHtml *ReportHtml
+var ReportHtmls *ReportHtml
 
 // INFO 提示信息，同时输出到终端和文件
 func INFO(format string, v ...interface{}) {
 	msg := fmt.Sprintf(format, v...)
 	slog.Info(msg)
-	addHtml(fmt.Sprintf("<p class=\"s%d info\">%s</p>", reportHtml.step, msg))
+	addHtml(fmt.Sprintf("<p class=\"s%d info\">%s</p>", ReportHtmls.Step, msg))
 }
 
 // STEP 步骤信息
 func STEP(step int, format string, v ...interface{}) {
 	msg := fmt.Sprintf(format, v...)
 	slog.Info(fmt.Sprintf("[第%02d步] %s", step, msg))
-	addHtml(fmt.Sprintf("<p class=\"s%d step\"><span>[第%02d步]</span> %s</p>", reportHtml.step, step, msg))
+	addHtml(fmt.Sprintf("<p class=\"s%d step\"><span>[第%02d步]</span> %s</p>", ReportHtmls.Step, step, msg))
 }
 
 // CHECK_POINT 检查点，如果allowRun!=nil,仅记录，继续运行
@@ -63,10 +65,10 @@ func CHECK_POINT(msg string, check bool, allowRun ...bool) {
 	var htmlMsg string
 	if check {
 		slog.Info(fmt.Sprintf("[CHECK_POINT PASS] %s", msg))
-		htmlMsg = fmt.Sprintf("<p class=\"s%d check-point success\"><span>[CHECK_POINT PASS]</span> %s</p>", reportHtml.step, msg)
+		htmlMsg = fmt.Sprintf("<p class=\"s%d check-point success\"><span>[CHECK_POINT PASS]</span> %s</p>", ReportHtmls.Step, msg)
 	} else {
 		slog.Info(fmt.Sprintf("[CHECK_POINT FAIL] %s", msg))
-		htmlMsg = fmt.Sprintf("<p class=\"s%d check-point fail\"><span>[CHECK_POINT FAIL]</span> %s</p>", reportHtml.step, msg)
+		htmlMsg = fmt.Sprintf("<p class=\"s%d check-point fail\"><span>[CHECK_POINT FAIL]</span> %s</p>", ReportHtmls.Step, msg)
 	}
 	addHtml(htmlMsg)
 	if !check && allowRun == nil {
@@ -75,31 +77,31 @@ func CHECK_POINT(msg string, check bool, allowRun ...bool) {
 }
 
 func addHtml(msg string) {
-	switch reportHtml.step {
+	switch ReportHtmls.Step {
 	case 0:
-		if reportHtml.Setup == nil {
-			reportHtml.Setup = new(Steps)
+		if ReportHtmls.Setup == nil {
+			ReportHtmls.Setup = new(Steps)
 		}
-		reportHtml.Setup.addStep(msg)
+		ReportHtmls.Setup.addStep(msg)
 	case 1:
-		reportHtml.Cases[len(reportHtml.Cases)-1].Setup.addStep(msg)
+		ReportHtmls.Cases[len(ReportHtmls.Cases)-1].Setup.addStep(msg)
 	case 2:
-		ddts := reportHtml.Cases[len(reportHtml.Cases)-1].Ddts
+		ddts := ReportHtmls.Cases[len(ReportHtmls.Cases)-1].Ddts
 		if ddts == nil {
-			reportHtml.Cases[len(reportHtml.Cases)-1].Ddts = append(
-				reportHtml.Cases[len(reportHtml.Cases)-1].Ddts,
+			ReportHtmls.Cases[len(ReportHtmls.Cases)-1].Ddts = append(
+				ReportHtmls.Cases[len(ReportHtmls.Cases)-1].Ddts,
 				Steps{Html: template.HTML(msg)},
 			)
 		} else {
-			reportHtml.Cases[len(reportHtml.Cases)-1].Ddts[len(ddts)-1].addStep(msg)
+			ReportHtmls.Cases[len(ReportHtmls.Cases)-1].Ddts[len(ddts)-1].addStep(msg)
 		}
 	case 3:
-		reportHtml.Cases[len(reportHtml.Cases)-1].Setup.addStep(msg)
+		ReportHtmls.Cases[len(ReportHtmls.Cases)-1].Setup.addStep(msg)
 	case 4:
-		if reportHtml.Teardown == nil {
-			reportHtml.Teardown = new(Steps)
+		if ReportHtmls.Teardown == nil {
+			ReportHtmls.Teardown = new(Steps)
 		}
-		reportHtml.Teardown.addStep(msg)
+		ReportHtmls.Teardown.addStep(msg)
 	}
 }
 
@@ -123,7 +125,7 @@ type ReportHtml struct {
 	Teardown *Steps
 	Cases    []TestCases
 	Child    []ReportHtml
-	step     int
+	Step     int
 	Times    int64
 }
 
@@ -139,14 +141,14 @@ func (r ReportHtml) Save() {
 		AbortNum        int
 		Pack            ReportHtml
 	}
-	ex, _ := os.Executable()
-	exPath := filepath.Dir(ex)
+	_, filename, _, _ := runtime.Caller(0)
+	exPath := filepath.Dir(filepath.Dir(filename))
 	tmpl, err := template.ParseFiles(
-		filepath.Join(exPath, "html", "template.tmpl"),
-		filepath.Join(exPath, "html", "js.tmpl"),
-		filepath.Join(exPath, "html", "cases.tmpl"),
-		filepath.Join(exPath, "html", "steps_result.tmpl"),
-		filepath.Join(exPath, "html", "my.css"),
+		filepath.Join(exPath, "statics", "html", "template.tmpl"),
+		filepath.Join(exPath, "statics", "html", "js.tmpl"),
+		filepath.Join(exPath, "statics", "html", "cases.tmpl"),
+		filepath.Join(exPath, "statics", "html", "steps_result.tmpl"),
+		filepath.Join(exPath, "statics", "html", "my.css"),
 	)
 	if err != nil {
 		panic(err)
@@ -158,14 +160,14 @@ func (r ReportHtml) Save() {
 	}(file)
 
 	err = tmpl.Execute(file, html{
-		ReportName:      ReportName,
-		AllNum:          allNum,
-		SetupFailNum:    setupFailNum,
-		TeardownFailNum: tearDownFailNum,
+		ReportName:      config.ReportName,
+		AllNum:          config.AllNum,
+		SetupFailNum:    config.SetupFailNum,
+		TeardownFailNum: config.TearDownFailNum,
 		SpendTime:       r.Times,
-		FailNum:         failNum,
-		SuccessNum:      successNum,
-		AbortNum:        abortNum,
+		FailNum:         config.FailNum,
+		SuccessNum:      config.SuccessNum,
+		AbortNum:        config.AbortNum,
 		Pack:            r,
 	})
 	if err != nil {

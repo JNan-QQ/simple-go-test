@@ -1,7 +1,8 @@
-package simple_go_test
+package ast
 
 import (
 	"bytes"
+	"gitee.com/jn-qq/simple-go-test/config"
 	"go/ast"
 	"go/format"
 	"go/parser"
@@ -17,7 +18,7 @@ import (
 func addImport(genDecl *ast.GenDecl, packs ...string) {
 	// 遍历包名
 	for _, pack := range packs {
-		pack = getRunPackage() + "/" + pack
+		pack = config.GetRunPackage() + "/" + pack
 		hasImport := false
 		// 判断是否已导入
 		for _, spec := range genDecl.Specs {
@@ -39,17 +40,17 @@ func addImport(genDecl *ast.GenDecl, packs ...string) {
 	}
 }
 
-// _TestPackAst 测试用例语法树
-type _TestPackAst struct {
+// TestPackAst 测试用例语法树
+type TestPackAst struct {
 	name         *ast.KeyValueExpr // 包名
 	suitSetup    *ast.KeyValueExpr // 包初始化
 	suitTeardown *ast.KeyValueExpr // 包清除
 	tests        []*ast.CallExpr   // 包测试用例
-	children     []*_TestPackAst   // 子包
+	children     []*TestPackAst    // 子包
 }
 
 // setPackName 设置包名
-func (t *_TestPackAst) setPackName(name string) {
+func (t *TestPackAst) setPackName(name string) {
 	t.name = &ast.KeyValueExpr{
 		Key:   ast.NewIdent("Name"),
 		Value: &ast.BasicLit{Kind: token.STRING, Value: strconv.Quote(name)},
@@ -57,7 +58,7 @@ func (t *_TestPackAst) setPackName(name string) {
 }
 
 // addSuitMethod 设置初始化、清除函数
-func (t *_TestPackAst) addSuitMethod(packName, funName string, isSetup bool) {
+func (t *TestPackAst) addSuitMethod(packName, funName string, isSetup bool) {
 	if isSetup {
 		t.suitSetup = &ast.KeyValueExpr{
 			Key: ast.NewIdent("SuitSetUp"),
@@ -78,7 +79,7 @@ func (t *_TestPackAst) addSuitMethod(packName, funName string, isSetup bool) {
 }
 
 // addStruct 统计包下测试用例
-func (t *_TestPackAst) addStruct(packName, structName string) {
+func (t *TestPackAst) addStruct(packName, structName string) {
 	if t.tests == nil {
 		t.tests = make([]*ast.CallExpr, 0)
 	}
@@ -95,15 +96,15 @@ func (t *_TestPackAst) addStruct(packName, structName string) {
 }
 
 // addChildPack 添加子包
-func (t *_TestPackAst) addChildPack(p *_TestPackAst) {
+func (t *TestPackAst) addChildPack(p *TestPackAst) {
 	if t.children == nil {
-		t.children = make([]*_TestPackAst, 0)
+		t.children = make([]*TestPackAst, 0)
 	}
 	t.children = append(t.children, p)
 }
 
 // ToAst 转换输出 AST 对象，用于替换main.go
-func (t *_TestPackAst) ToAst() *ast.CompositeLit {
+func (t *TestPackAst) ToAst() *ast.CompositeLit {
 	if t.name == nil || (t.tests == nil && t.children == nil) || (len(t.children) == 0 && len(t.tests) == 0) {
 		return nil
 	}
@@ -169,23 +170,23 @@ func (t *_TestPackAst) ToAst() *ast.CompositeLit {
 	return res
 }
 
-// AstFind 遍历包下的go文件
-func AstFind(root string) *_TestPackAst {
-	astPack := new(_TestPackAst)
+// Find 遍历包下的go文件
+func Find(root string) *TestPackAst {
+	astPack := new(TestPackAst)
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if d.IsDir() {
 			// 子包深度
 			deep := len(strings.Split(strings.ReplaceAll(path, "\\", "/"), "/"))
 
 			// 包名
-			PackageNames = append(PackageNames, strings.ReplaceAll(path, "\\", "/"))
+			config.PackageNames = append(config.PackageNames, strings.ReplaceAll(path, "\\", "/"))
 
 			var astP = astPack
 			for i := 1; i < deep; i++ {
 				if astP.children == nil {
-					astP.children = make([]*_TestPackAst, 0)
+					astP.children = make([]*TestPackAst, 0)
 				}
-				astP.children = append(astP.children, new(_TestPackAst))
+				astP.children = append(astP.children, new(TestPackAst))
 				astP = astP.children[len(astP.children)-1]
 			}
 		} else {
@@ -207,7 +208,7 @@ func AstFind(root string) *_TestPackAst {
 }
 
 // 读取文件语法树
-func readAst(path string, t *_TestPackAst) {
+func readAst(path string, t *TestPackAst) {
 	file, _ := filepath.Abs(path)
 	fileSet := token.NewFileSet()
 	parseFile, _ := parser.ParseFile(fileSet, file, nil, parser.ParseComments)
@@ -257,15 +258,15 @@ func WriteToMain(v *ast.CompositeLit) {
 		case *ast.GenDecl:
 			if n.Tok == token.IMPORT {
 				// 查找有没有import context包
-				addImport(n, PackageNames...)
+				addImport(n, config.PackageNames...)
 			} else if n.Tok == token.VAR {
 				x := n.Specs[0].(*ast.ValueSpec)
 				if x.Names[0].Name == "testTree" {
 					x.Values[0] = v
 				} else if x.Names[0].Name == "selectBy" {
-					x.Values[0].(*ast.BasicLit).Value = strconv.Itoa(int(FilterBy))
+					x.Values[0].(*ast.BasicLit).Value = strconv.Itoa(int(config.FilterBy))
 				} else if x.Names[0].Name == "selectValue" {
-					x.Values[0].(*ast.BasicLit).Value = FilterValue
+					x.Values[0].(*ast.BasicLit).Value = config.FilterValue
 				}
 			}
 		}

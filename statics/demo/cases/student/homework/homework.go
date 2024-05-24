@@ -8,31 +8,31 @@
   See the Mulan PSL v2 for more details.
 */
 
-package teacher
+package homework
 
 import (
 	"fmt"
-	sgt "gitee.com/jn-qq/simple-go-test"
+	"gitee.com/jn-qq/simple-go-test/runner"
 )
 
-type TestHomeWork1 sgt.Test
+type TestHomeWork runner.Test
 
 // Init 测试用例构造
-func (t *TestHomeWork1) Init() *sgt.Test {
+func (t *TestHomeWork) Init() *runner.Test {
 	// 设置 返回
-	t.Name = "Cases006"
+	t.Name = "Cases005"
 	t.Tags = []string{"homework"}
 
-	return (*sgt.Test)(t)
+	return (*runner.Test)(t)
 }
 
 // SetUp 测试用例初始化
-func (t *TestHomeWork1) SetUp() {}
+func (t *TestHomeWork) SetUp() {}
 
 // TearDown 测试用例清除
-func (t *TestHomeWork1) TearDown() {}
+func (t *TestHomeWork) TearDown() {}
 
 // TestStep 测试步骤
-func (t *TestHomeWork1) TestStep() {
-	fmt.Println("TestHomeWork1 TestStep")
+func (t *TestHomeWork) TestStep() {
+	fmt.Println("TestHomeWork TestStep")
 }

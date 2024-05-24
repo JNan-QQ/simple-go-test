@@ -8,10 +8,9 @@
   See the Mulan PSL v2 for more details.
 */
 
-package simple_go_test
+package config
 
 import (
-	"embed"
 	"os"
 	"strings"
 )
@@ -27,18 +26,15 @@ var (
 	ReportName      string = "测试报告"
 	FilterBy        By
 	FilterValue     string
-	successNum      int
-	abortNum        int
-	failNum         int
-	allNum          int
-	setupFailNum    int
-	tearDownFailNum int
+	SuccessNum      int
+	AbortNum        int
+	FailNum         int
+	AllNum          int
+	SetupFailNum    int
+	TearDownFailNum int
 )
 
-//go:embed demo/**
-var FS embed.FS
-
-func getRunPackage() string {
+func GetRunPackage() string {
 	file, _ := os.ReadFile("./go.mod")
 	f1 := strings.Split(string(file), "\n")[0]
 	return strings.Split(f1, " ")[1]
@@ -54,9 +50,9 @@ const (
 )
 
 const (
-	fail int = iota
-	success
-	abort
+	Fail int = iota
+	Success
+	Abort
 )
 
 type _GlobalStore map[string]interface{}

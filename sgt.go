@@ -11,9 +11,11 @@
 package main
 
 import (
+	"embed"
 	"flag"
 	"fmt"
-	sgt "gitee.com/jn-qq/simple-go-test"
+	"gitee.com/jn-qq/simple-go-test/ast"
+	"gitee.com/jn-qq/simple-go-test/config"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -39,12 +41,15 @@ type _args struct {
 
 var args = new(_args)
 
+//go:embed statics/demo/*
+var FS embed.FS
+
 func main() {
 	flag.BoolVar(&args.version, "version", false, "build version")
-	flag.StringVar(&sgt.Lang, "lang", "zh", "language")
+	flag.StringVar(&config.Lang, "lang", "zh", "language")
 	flag.StringVar(&args.new, "new", "", "create new case project")
-	flag.StringVar(&sgt.CasesDir, "caseDir", "cases", "指定测试目录名")
-	//flag.IntVar(&sgt.Logger.level, "log-level", 1, "log level")
+	flag.StringVar(&config.CasesDir, "caseDir", "cases", "指定测试目录名")
+	//flag.IntVar(&config.Logger.level, "log-level", 1, "log level")
 	//flag.BoolVar(&args.autoOpenReport, "auto-open-report", false, "auto open report")
 	//flag.StringVar(&args.reportTitle, "report-title", "测试报告", "report title")
 	//flag.StringVar(&args.urlPrefix, "url-prefix", "http://127.0.0.1", "url prefix")
@@ -57,13 +62,13 @@ func main() {
 
 	// 返回版本
 	if args.version {
-		fmt.Println(sgt.Version)
+		fmt.Println(config.Version)
 		return
 	}
 
 	// 设置语言
-	if !slices.Contains([]string{"zh", "en"}, sgt.Lang) {
-		sgt.Lang = "zh"
+	if !slices.Contains([]string{"zh", "en"}, config.Lang) {
+		config.Lang = "zh"
 	}
 
 	// 新建测试项目
@@ -74,31 +79,31 @@ func main() {
 
 	// 整理过滤条件
 	if args.tag != "" {
-		sgt.FilterBy = sgt.ByTagName
-		sgt.FilterValue = args.tag
+		config.FilterBy = config.ByTagName
+		config.FilterValue = args.tag
 	} else if args.tagNot != "" {
-		sgt.FilterBy = sgt.ByNotTagName
-		sgt.FilterValue = args.tagNot
+		config.FilterBy = config.ByNotTagName
+		config.FilterValue = args.tagNot
 	} else if args.test != "" {
-		sgt.FilterBy = sgt.ByTestName
-		sgt.FilterValue = args.test
+		config.FilterBy = config.ByTestName
+		config.FilterValue = args.test
 	} else if args.pkg != "" {
-		sgt.FilterBy = sgt.ByPackageName
-		sgt.FilterValue = sgt.CasesDir
+		config.FilterBy = config.ByPackageName
+		config.FilterValue = config.CasesDir
 	} else {
-		sgt.FilterBy = sgt.ByTagName
-		sgt.FilterValue = ""
+		config.FilterBy = config.ByTagName
+		config.FilterValue = ""
 	}
 
 	fmt.Println("\n\n开始格式化测试用例组织关系...")
-	astPack := sgt.AstFind(sgt.CasesDir).ToAst()
+	astPack := ast.Find(config.CasesDir).ToAst()
 	fmt.Println("更新 main.go 文件")
-	sgt.WriteToMain(astPack)
+	ast.WriteToMain(astPack)
 	fmt.Println("格式化完成！")
 
 	if args.run {
 		fmt.Printf("%s\n * simple-go-test %s   https://gitee.com/JNan-QQ/simple-go-test *\n%s\n",
-			strings.Repeat(" *", 34), sgt.Version, strings.Repeat(" *", 34))
+			strings.Repeat(" *", 34), config.Version, strings.Repeat(" *", 34))
 
 		fmt.Println("开始运行 main.go 文件")
 		_ = exec.Command("go", "run", "main.go").Run()
@@ -114,7 +119,7 @@ func copyDemo(p string) {
 	}
 
 	// 复制 demo 项目
-	if err := fs.WalkDir(sgt.FS, "demo", func(path string, d fs.DirEntry, err error) error {
+	if err := fs.WalkDir(FS, "demo", func(path string, d fs.DirEntry, err error) error {
 		_path := strings.Replace(path, "demo", p, 1)
 		if d.IsDir() {
 			// 创建目录
@@ -122,15 +127,15 @@ func copyDemo(p string) {
 				return err
 			}
 		} else {
-			readFile, err := fs.ReadFile(sgt.FS, path)
+			readFile, err := fs.ReadFile(FS, path)
 			if err != nil {
 				return err
 			}
 			if d.Name() == "go.x" || d.Name() == "main.go" {
 				compile, _ := regexp.Compile("packname")
 				readFile = compile.ReplaceAll(readFile, []byte(p))
-				compile, _ = regexp.Compile("sgtVersion")
-				readFile = compile.ReplaceAll(readFile, []byte(sgt.Version))
+				compile, _ = regexp.Compile("configVersion")
+				readFile = compile.ReplaceAll(readFile, []byte(config.Version))
 				_path = strings.Replace(_path, "go.x", "go.mod", 1)
 			}
 			if err = os.WriteFile(_path, readFile, 0644); err != nil {
