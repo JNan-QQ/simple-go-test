@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>测试报告</title>
+    <script src="https://s4.zstatic.net/npm/chart.js"></script>
+</head>
+<body>
+<h1 class="title">{{.ReportName}}</h1>
+<div class="result">
+    <div class="table">
+        <table>
+            <tr>
+                <td><span class="name">总用例</span></td>
+                <td><span class="value">{{.AllNum}}</span></td>
+            </tr>
+            <tr>
+                <td><span class="name">已执行</span></td>
+                <td><span class="value" id="done-num"></span></td>
+            </tr>
+            <tr>
+                <td><span class="name">未执行</span></td>
+                <td><span class="value" id="not-done-num"></span></td>
+            </tr>
+            <tr>
+                <td><span class="fail">初始化失败</span></td>
+                <td><span class="value fail">{{.SetupFailNum}}</span></td>
+            </tr>
+            <tr>
+                <td><span class="fail">清除失败</span></td>
+                <td><span class="value fail">{{.TeardownFailNum}}</span></td>
+            </tr>
+        </table>
+        <p>用时：<span id="cases-time"></span></p>
+    </div>
+    <canvas id="myChart-doughnut"></canvas>
+</div>
+<hr/>
+<div class="test-details">
+{{template "cases.tmpl" .Pack}}
+</div>
+</body>
+<script>
+    {{template "js.tmpl" .}}
+</script>
+<style>
+    {{template "my.css"}}
+</style>
+</html>

@@ -1,0 +1,83 @@
+<!--  包初始化操作  -->
+{{if ne .Setup nil}}
+<details open class="pack setup">
+    <summary class="step-title s0">
+        <span class="name">{{.Name}}包 初始化</span>
+        <span class="time">{{.Setup.Times}}</span>
+        {{template "steps_result.tmpl" .Setup.Result}}
+    </summary>
+    <div class="step-desc s0">
+        {{.Setup.Html}}
+    </div>
+</details>
+{{end}}
+
+<!--  遍历运行测试用例  -->
+{{range .Cases}}
+<details class="tests runner">
+    <!--   整体测试结果     -->
+    <summary class="step-title s1">
+        <span class="name">{{.Name}}</span>
+        <span class="time">{{.Times}}</span>
+        {{template "steps_result.tmpl" .Result}}
+    </summary>
+    <div class="step-desc s1">
+        <!--   测试用例初始化     -->
+        <div class="tests-setup s11">
+            <div class="title">
+                <span class="name">{{.Name}} 用例初始化</span>
+                {{template "steps_result.tmpl" .Setup.Result}}
+            </div>
+            <div class="desc">
+                {{.Setup.Html}}
+            </div>
+        </div>
+
+        <!--   遍历数据驱动     -->
+        {{range $index, $value := .Ddts}}
+        <div class="tests-cases s11">
+            <div class="title">
+                <span class="name">子测试 {{$index}}</span>
+                {{template "steps_result.tmpl" $value.Result}}
+            </div>
+            <div class="desc">
+                {{$value.Html}}
+            </div>
+        </div>
+        {{end}}
+
+
+        <!--   测试用例清除     -->
+        <div class="tests-teardown s11">
+            <div class="title">
+                <span class="name">{{.Name}} 用例清除</span>
+                {{template "steps_result.tmpl" .Teardown.Result}}
+            </div>
+            <div class="desc">
+                {{.Teardown.Html}}
+            </div>
+        </div>
+    </div>
+
+</details>
+{{end}}
+
+<!--   遍历子包     -->
+{{range .Child}}
+{{template "cases.tmpl" .}}
+{{end}}
+
+<!--  包清除操作  -->
+{{if ne .Teardown nil}}
+<details class="pack teardown">
+    <summary class="step-title s0">
+        <span class="name">{{.Name}}包 清除</span>
+        <span class="time">{{.Teardown.Times}}</span>
+        {{template "steps_result.tmpl" .Teardown.Result}}
+    </summary>
+    <div class="step-desc s0">
+        {{.Teardown.Html}}
+    </div>
+</details>
+{{end}}
+

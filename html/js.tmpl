@@ -1,0 +1,33 @@
+// 秒数转时分秒
+function formatTime(seconds) {
+    const hours = Math.floor(seconds / 3600).toString()
+    const minutes = Math.floor((seconds % 3600) / 60).toString()
+    const remainingSeconds = (seconds % 60).toString()
+
+    return `${hours.padStart(2, "0")}:${minutes.padStart(2, "0")}:${remainingSeconds.padStart(2, "0")}`;
+}
+
+document.getElementById("cases-time").innerText = formatTime({{.SpendTime}})
+document.getElementById("done-num").innerText = {{.FailNum}}+{{.SuccessNum}}+{{.AbortNum}}
+document.getElementById("not-done-num").innerText = {{.AllNum}}-({{.FailNum}}+{{.SuccessNum}}+{{.AbortNum}})
+
+// 饼图
+new Chart(document.getElementById('myChart-doughnut'), {
+    type: 'doughnut', data: {
+        labels: [
+            'FAIL',
+            'SUCCESS',
+            'ABORT'
+        ],
+        datasets: [{
+            label: 'NUM：',
+            data: [{{.FailNum}}, {{.SuccessNum}}, {{.AbortNum}}],
+            backgroundColor: [
+                'rgb(255, 99, 132)',
+                'rgb(128,231,22)',
+                'rgb(255, 205, 86)'
+            ],
+            hoverOffset: 4
+        }]
+    }
+})

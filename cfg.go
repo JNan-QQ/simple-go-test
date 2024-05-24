@@ -21,14 +21,21 @@ const (
 )
 
 var (
-	Lang         = "zh"
-	CasesDir     = "cases"
-	PackageNames []string
-	FilterBy     By
-	FilterValue  string
+	Lang            = "zh"
+	CasesDir        = "cases"
+	PackageNames    []string
+	ReportName      string = "测试报告"
+	FilterBy        By
+	FilterValue     string
+	successNum      int
+	abortNum        int
+	failNum         int
+	allNum          int
+	setupFailNum    int
+	tearDownFailNum int
 )
 
-//go:embed demo/*
+//go:embed demo/**
 var FS embed.FS
 
 func getRunPackage() string {
@@ -45,3 +52,25 @@ const (
 	ByTestName
 	ByPackageName
 )
+
+const (
+	fail int = iota
+	success
+	abort
+)
+
+type _GlobalStore map[string]interface{}
+
+func (g _GlobalStore) SetItem(key string, value interface{}) {
+	g[key] = value
+}
+
+func (g _GlobalStore) GetItem(key string) interface{} {
+	if value, ok := g[key]; ok {
+		return value
+	} else {
+		return nil
+	}
+}
+
+var GSTORE = new(_GlobalStore)

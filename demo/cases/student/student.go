@@ -12,7 +12,7 @@ package student
 
 import (
 	"fmt"
-	"gitee.com/jn-qq/simple-go-test"
+	sgt "gitee.com/jn-qq/simple-go-test"
 )
 
 func SuiteSetUp() {
@@ -20,15 +20,15 @@ func SuiteSetUp() {
 }
 
 // TestNum1 实现接口 simple_go_test.TestInterface
-type TestNum1 simple_go_test.Test
+type TestNum1 sgt.Test
 
 // Init 测试用例构造
-func (t *TestNum1) Init() simple_go_test.Test {
+func (t *TestNum1) Init() *sgt.Test {
 	// 设置 返回
 	t.Name = "Cases003"
 	t.Tags = []string{"student", "冒烟测试", "num"}
 
-	return simple_go_test.Test(*t)
+	return (*sgt.Test)(t)
 }
 
 // SetUp 测试用例初始化
@@ -47,15 +47,15 @@ func (t *TestNum1) TestStep() {
 }
 
 // TestString1 实现接口 simple_go_test.TestInterface
-type TestString1 simple_go_test.Test
+type TestString1 sgt.Test
 
-func (t *TestString1) Init() simple_go_test.Test {
+func (t *TestString1) Init() *sgt.Test {
 	// 设置 返回
 	t.Name = "Cases004"
 	t.Tags = []string{"student", "冒烟测试", "string"}
 	t.DDT = []any{"1", "2", "3", "4"}
 
-	return simple_go_test.Test(*t)
+	return (*sgt.Test)(t)
 }
 
 func (t *TestString1) SetUp() {

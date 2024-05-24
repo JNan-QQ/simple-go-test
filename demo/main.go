@@ -1,39 +1,29 @@
 package main
 
 import (
-	"fmt"
-	"gitee.com/jn-qq/simple-go-test"
-	"gitee.com/jn-qq/simple-go-test/demo/cases"
-	"gitee.com/jn-qq/simple-go-test/demo/cases/student"
-	"gitee.com/jn-qq/simple-go-test/demo/cases/student/homework"
-	"io/fs"
+	sgt "gitee.com/jn-qq/simple-go-test"
 )
 
-var testTree = simple_go_test.TestPackage{
-	Name:         "cases",
-	Tests:        []simple_go_test.TestInterface{new(cases.TestNum), new(cases.TestString)},
-	SuitSetUp:    cases.SuiteSetUp,
-	SuitTearDown: cases.SuiteTearDown,
-	Child: []simple_go_test.TestPackage{
-		simple_go_test.TestPackage{
-			Name:      "student",
-			Tests:     []simple_go_test.TestInterface{new(student.TestNum1), new(student.TestString1)},
-			SuitSetUp: student.SuiteSetUp,
-			Child: []simple_go_test.TestPackage{
-				simple_go_test.TestPackage{
-					Name:  "homework",
-					Tests: []simple_go_test.TestInterface{new(homework.TestHomeWork)},
-				},
-			},
-		},
-	},
-}
+var testTree = sgt.TestPackage{}
+
+var selectBy sgt.By = 0
+var selectValue = ""
 
 func main() {
-	//fmt.Printf("%+v", testTree.SelectBy(simple_go_test.ByTagName, "冒烟测试"))
-	dir, err := fs.ReadDir(simple_go_test.FS, "demo")
-	if err != nil {
-		return
-	}
-	fmt.Println(dir)
+	// 自定义日志对象
+	file := sgt.Logger()
+	defer func() {
+		_ = file.Close()
+	}()
+
+	// 过滤
+	testTree = *testTree.SelectBy(selectBy, selectValue)
+	// 统计测试用例个数
+	sgt.GSTORE.SetItem("caseNum", testTree.Num())
+
+	//运行
+	report := testTree.Run()
+
+	// 保存测试报告
+	report.Save()
 }

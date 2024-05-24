@@ -109,7 +109,7 @@ func (t *_TestPackAst) ToAst() *ast.CompositeLit {
 	}
 	res := &ast.CompositeLit{
 		Type: &ast.SelectorExpr{
-			X:   ast.NewIdent("simple_go_test"),
+			X:   ast.NewIdent("sgt"),
 			Sel: ast.NewIdent("TestPackage"),
 		},
 		Elts: []ast.Expr{
@@ -128,7 +128,7 @@ func (t *_TestPackAst) ToAst() *ast.CompositeLit {
 			Value: &ast.CompositeLit{
 				Type: &ast.ArrayType{
 					Elt: &ast.SelectorExpr{
-						X:   ast.NewIdent("simple_go_test"),
+						X:   ast.NewIdent("sgt"),
 						Sel: ast.NewIdent("TestInterface"),
 					},
 				},
@@ -149,7 +149,7 @@ func (t *_TestPackAst) ToAst() *ast.CompositeLit {
 			Value: &ast.CompositeLit{
 				Type: &ast.ArrayType{
 					Elt: &ast.SelectorExpr{
-						X:   ast.NewIdent("simple_go_test"),
+						X:   ast.NewIdent("sgt"),
 						Sel: ast.NewIdent("TestPackage"),
 					},
 				},
@@ -255,14 +255,17 @@ func WriteToMain(v *ast.CompositeLit) {
 	ast.Inspect(f, func(node ast.Node) bool {
 		switch n := node.(type) {
 		case *ast.GenDecl:
-			// 查找有没有import context包
-			// Notice：没有考虑没有import任何包的情况
 			if n.Tok == token.IMPORT {
+				// 查找有没有import context包
 				addImport(n, PackageNames...)
 			} else if n.Tok == token.VAR {
 				x := n.Specs[0].(*ast.ValueSpec)
 				if x.Names[0].Name == "testTree" {
 					x.Values[0] = v
+				} else if x.Names[0].Name == "selectBy" {
+					x.Values[0].(*ast.BasicLit).Value = strconv.Itoa(int(FilterBy))
+				} else if x.Names[0].Name == "selectValue" {
+					x.Values[0].(*ast.BasicLit).Value = FilterValue
 				}
 			}
 		}

@@ -12,18 +12,18 @@ package teacher
 
 import (
 	"fmt"
-	"gitee.com/jn-qq/simple-go-test"
+	sgt "gitee.com/jn-qq/simple-go-test"
 )
 
-type TestHomeWork1 simple_go_test.Test
+type TestHomeWork1 sgt.Test
 
 // Init 测试用例构造
-func (t *TestHomeWork1) Init() simple_go_test.Test {
+func (t *TestHomeWork1) Init() *sgt.Test {
 	// 设置 返回
 	t.Name = "Cases006"
 	t.Tags = []string{"homework"}
 
-	return simple_go_test.Test(*t)
+	return (*sgt.Test)(t)
 }
 
 // SetUp 测试用例初始化
