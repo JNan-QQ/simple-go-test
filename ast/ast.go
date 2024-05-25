@@ -110,7 +110,7 @@ func (t *TestPackAst) ToAst() *ast.CompositeLit {
 	}
 	res := &ast.CompositeLit{
 		Type: &ast.SelectorExpr{
-			X:   ast.NewIdent("sgt"),
+			X:   ast.NewIdent("runner"),
 			Sel: ast.NewIdent("TestPackage"),
 		},
 		Elts: []ast.Expr{
@@ -129,7 +129,7 @@ func (t *TestPackAst) ToAst() *ast.CompositeLit {
 			Value: &ast.CompositeLit{
 				Type: &ast.ArrayType{
 					Elt: &ast.SelectorExpr{
-						X:   ast.NewIdent("sgt"),
+						X:   ast.NewIdent("runner"),
 						Sel: ast.NewIdent("TestInterface"),
 					},
 				},
@@ -150,7 +150,7 @@ func (t *TestPackAst) ToAst() *ast.CompositeLit {
 			Value: &ast.CompositeLit{
 				Type: &ast.ArrayType{
 					Elt: &ast.SelectorExpr{
-						X:   ast.NewIdent("sgt"),
+						X:   ast.NewIdent("runner"),
 						Sel: ast.NewIdent("TestPackage"),
 					},
 				},
