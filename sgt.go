@@ -28,10 +28,8 @@ import (
 type _args struct {
 	version        bool
 	new            string
-	caseDir        string
 	autoOpenReport bool
 	reportTitle    string
-	urlPrefix      string
 	test           string
 	pkg            string
 	tag            string
@@ -48,7 +46,6 @@ func main() {
 	flag.BoolVar(&args.version, "version", false, "build version")
 	flag.StringVar(&config.Lang, "lang", "zh", "language")
 	flag.StringVar(&args.new, "new", "", "create new case project")
-	flag.StringVar(&config.CasesDir, "caseDir", "cases", "指定测试目录名")
 	//flag.BoolVar(&args.autoOpenReport, "auto-open-report", false, "auto open report")
 	flag.StringVar(&config.ReportName, "report-title", "测试报告", "report title")
 	flag.StringVar(&args.test, "test", "", "用例名称过滤")
@@ -87,7 +84,7 @@ func main() {
 		config.FilterValue = args.test
 	} else if args.pkg != "" {
 		config.FilterBy = config.ByPackageName
-		config.FilterValue = config.CasesDir
+		config.FilterValue = args.pkg
 	} else {
 		config.FilterBy = config.ByTagName
 		config.FilterValue = ""

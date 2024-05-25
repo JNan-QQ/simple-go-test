@@ -266,7 +266,7 @@ func WriteToMain(v *ast.CompositeLit) {
 				} else if x.Names[0].Name == "selectBy" {
 					x.Values[0].(*ast.BasicLit).Value = strconv.Itoa(int(config.FilterBy))
 				} else if x.Names[0].Name == "selectValue" {
-					x.Values[0].(*ast.BasicLit).Value = config.FilterValue
+					x.Values[0].(*ast.BasicLit).Value = strconv.Quote(config.FilterValue)
 				}
 			}
 		}
