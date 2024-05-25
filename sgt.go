@@ -41,7 +41,7 @@ type _args struct {
 
 var args = new(_args)
 
-//go:embed statics/demo/*
+//go:embed statics/demo
 var FS embed.FS
 
 func main() {
@@ -49,10 +49,8 @@ func main() {
 	flag.StringVar(&config.Lang, "lang", "zh", "language")
 	flag.StringVar(&args.new, "new", "", "create new case project")
 	flag.StringVar(&config.CasesDir, "caseDir", "cases", "指定测试目录名")
-	//flag.IntVar(&config.Logger.level, "log-level", 1, "log level")
 	//flag.BoolVar(&args.autoOpenReport, "auto-open-report", false, "auto open report")
-	//flag.StringVar(&args.reportTitle, "report-title", "测试报告", "report title")
-	//flag.StringVar(&args.urlPrefix, "url-prefix", "http://127.0.0.1", "url prefix")
+	flag.StringVar(&config.ReportName, "report-title", "测试报告", "report title")
 	flag.StringVar(&args.test, "test", "", "用例名称过滤")
 	flag.StringVar(&args.pkg, "pkg", "", "包名过滤")
 	flag.StringVar(&args.tag, "tag", "", "tag过滤")
@@ -119,8 +117,8 @@ func copyDemo(p string) {
 	}
 
 	// 复制 demo 项目
-	if err := fs.WalkDir(FS, "demo", func(path string, d fs.DirEntry, err error) error {
-		_path := strings.Replace(path, "demo", p, 1)
+	if err := fs.WalkDir(FS, "statics/demo", func(path string, d fs.DirEntry, err error) error {
+		_path := strings.Replace(path, "statics/demo", p, 1)
 		if d.IsDir() {
 			// 创建目录
 			if err := os.MkdirAll(_path, 0755); err != nil {
@@ -134,7 +132,7 @@ func copyDemo(p string) {
 			if d.Name() == "go.x" || d.Name() == "main.go" {
 				compile, _ := regexp.Compile("packname")
 				readFile = compile.ReplaceAll(readFile, []byte(p))
-				compile, _ = regexp.Compile("configVersion")
+				compile, _ = regexp.Compile("sgtVersion")
 				readFile = compile.ReplaceAll(readFile, []byte(config.Version))
 				_path = strings.Replace(_path, "go.x", "go.mod", 1)
 			}
