@@ -11,66 +11,83 @@
 package cases
 
 import (
-	"fmt"
+	"gitee.com/jn-qq/simple-go-test/logger"
 	"gitee.com/jn-qq/simple-go-test/runner"
+	"time"
 )
 
 func SuiteSetUp() {
-	fmt.Println("Package cases SetUp")
+	logger.INFO("进行包 cases 初始化操作")
+	time.Sleep(5 * time.Second)
+	logger.INFO("包 cases 初始化完成")
 }
 
 func SuiteTearDown() {
-	fmt.Println("Package cases TearDown")
+	logger.INFO("进行包 %cases 清除操作")
+	time.Sleep(5 * time.Second)
+	logger.INFO("包 %cases 清除完成")
 }
 
 // TestNum 实现接口 simple_go_test.TestInterface
-type TestNum runner.Test
+type TestNum struct {
+	runner.Test
+}
 
 // Init 测试用例构造
-func (t *TestNum) Init() *runner.Test {
+func (t *TestNum) Init() runner.Test {
 	// 设置 返回
-	t.Name = "Cases001"
+	t.Name = "C0001"
 	t.Tags = []string{"cases", "冒烟测试", "num"}
 
-	return (*runner.Test)(t)
+	return t.Test
 }
 
 // SetUp 测试用例初始化
 func (t *TestNum) SetUp() {
-	fmt.Println("TestNum SetUp")
+	logger.INFO("用例 C0001 初始化")
+	time.Sleep(5 * time.Second)
 }
 
 // TearDown 测试用例清除
 func (t *TestNum) TearDown() {
-	fmt.Println("TestNum TearDown")
+	logger.INFO("用例 C0001 清除")
+	time.Sleep(5 * time.Second)
 }
 
 // TestStep 测试步骤
 func (t *TestNum) TestStep() {
-	fmt.Println("TestNum TestStep")
+	logger.INFO("用例 C0001 运行")
+	logger.STEP(1, "打开页面xxxx")
+	time.Sleep(5 * time.Second)
+	logger.CHECK_POINT("成功进入页面xxxx", true, false)
+	logger.STEP(2, "关闭页面xxxx")
+	time.Sleep(5 * time.Second)
 }
 
 // TestString 实现接口 simple_go_test.TestInterface
 type TestString runner.Test
 
-func (t *TestString) Init() *runner.Test {
+func (t TestString) Init() runner.Test {
 	// 设置 返回
-	t.Name = "Cases002"
+	t.Name = "C0002"
 	t.Tags = []string{"cases", "冒烟测试", "string"}
-	t.DDT = []any{"1", "2", "3", "4"}
+	t.DDT = []any{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 
-	return (*runner.Test)(t)
+	return runner.Test(t)
 }
 
-func (t *TestString) SetUp() {
-	fmt.Println("TestString SetUp")
+func (t TestString) SetUp() {
+	logger.INFO("用例 C0002 初始化")
+	time.Sleep(5 * time.Second)
 }
 
-func (t *TestString) TearDown() {
-	fmt.Println("TestString TearDown")
+func (t TestString) TearDown() {
+	logger.INFO("用例 C0002 清除")
+	time.Sleep(5 * time.Second)
 }
 
-func (t *TestString) TestStep() {
+func (t TestString) TestStep() {
 	para := t.Para
-	fmt.Println("TestString TestStep By Para", para)
+	time.Sleep(5 * time.Second)
+	logger.CHECK_POINT("数据小于6", para.(int) < 6, true)
 }

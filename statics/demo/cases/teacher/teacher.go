@@ -11,28 +11,30 @@
 package teacher
 
 import (
-	"fmt"
+	"gitee.com/jn-qq/simple-go-test/logger"
 	"gitee.com/jn-qq/simple-go-test/runner"
+	"time"
 )
 
 type TestHomeWork1 runner.Test
 
 // Init 测试用例构造
-func (t *TestHomeWork1) Init() *runner.Test {
+func (t TestHomeWork1) Init() runner.Test {
 	// 设置 返回
-	t.Name = "Cases006"
+	t.Name = "C0006"
 	t.Tags = []string{"homework"}
 
-	return (*runner.Test)(t)
+	return runner.Test(t)
 }
 
 // SetUp 测试用例初始化
-func (t *TestHomeWork1) SetUp() {}
+func (t TestHomeWork1) SetUp() {}
 
 // TearDown 测试用例清除
-func (t *TestHomeWork1) TearDown() {}
+func (t TestHomeWork1) TearDown() {}
 
 // TestStep 测试步骤
-func (t *TestHomeWork1) TestStep() {
-	fmt.Println("TestHomeWork1 TestStep")
+func (t TestHomeWork1) TestStep() {
+	logger.INFO("运行测试用例:" + t.Name)
+	time.Sleep(5 * time.Second)
 }

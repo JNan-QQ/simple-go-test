@@ -11,6 +11,7 @@
 package runner
 
 import (
+	"fmt"
 	"gitee.com/jn-qq/simple-go-test/config"
 	"gitee.com/jn-qq/simple-go-test/logger"
 	"regexp"
@@ -20,7 +21,7 @@ import (
 )
 
 type TestInterface interface {
-	Init() *Test
+	Init() Test
 	SetUp()
 	TearDown()
 	TestStep()
@@ -118,8 +119,11 @@ func (t *TestPackage) Run() logger.ReportHtml {
 	// 记录开始时间
 	report.Times = time.Now().Unix()
 
+	fmt.Println("进入包：" + t.Name)
+
 	// 包结构初始化
 	if t.SuitSetUp != nil {
+		fmt.Println("\t包初始化... ")
 		// 记录运行进程
 		report.Step = 0
 		// 实例化消息对象
@@ -132,81 +136,67 @@ func (t *TestPackage) Run() logger.ReportHtml {
 		if report.Setup.Result != config.Success {
 			// 记录初始化失败次数
 			config.SetupFailNum += 1
-			return report
+			fmt.Println(colorPrinter(" FAIL").Red())
+			goto packTeardown
 		}
+		fmt.Println("\t包初始化：" + colorPrinter(" PASS").Green())
 	}
-	// 包结构清除
-	defer func() {
-		if t.SuitTearDown != nil {
-			// 记录运行进程
-			report.Step = 4
-			// 实例化消息对象
-			report.Teardown = new(logger.Steps)
-			report.Teardown.Times = time.Now().Format("2006-01-02 15:04:05")
-			// 异步调用
-			report.Teardown.Result = syncRun(t.SuitTearDown)
-			if report.Teardown.Result != config.Success {
-				// 记录清除失败次数
-				config.TearDownFailNum += 1
-			}
-		}
-	}()
 
 	// 遍历包下测试用例
 	for _, test := range t.Tests {
 		// 设置初始值
 		ts := test.Init()
 
+		fmt.Println("\n\n运行测试用例：" + ts.Name)
+
 		// 实例化测试结果对象
 		cases := &logger.TestCases{Name: ts.Name}
 		report.Cases = append(report.Cases, *cases)
 		cases.Times = time.Now().Format("2006-01-02 15:04:05")
 
+		fmt.Println("\t测试用例初始化")
 		// 测试用例初始化
 		report.Step = 1
 		cases.Setup.Result = syncRun(test.TestStep)
 		if cases.Setup.Result != config.Success {
 			config.SetupFailNum += 1
+			cases.Result = config.Abort
+			config.AbortNum += 1
 			// 初始化失败跳过测试，执行清除
 			goto casesTeardown
 		}
 
 		// 运行测试步骤
 		report.Step = 2
+		report.Cases[len(report.Cases)-1].StepCases = new(logger.Steps)
 		if len(ts.DDT) > 0 {
 			// 数据驱动不为空
-			var hasFailed bool
 			// 遍历数据驱动，取出数据
-			for _, ddt := range ts.DDT {
-				report.Cases[len(report.Cases)-1].Ddts = append(report.Cases[len(report.Cases)-1].Ddts, logger.Steps{})
+			for i, ddt := range ts.DDT {
 				// 将数据赋值给 Para 便于 TestStep 中用户调用
+				logger.INFO(fmt.Sprintf("\n运行子测试：%d", i))
 				ts.Para = ddt
-				if syncRun(test.TestStep) != config.Success {
-					hasFailed = true
+				if cases.Result = syncRun(test.TestStep); cases.Result != config.Success {
+					break
 				}
-			}
-			// 判断整体运行结果
-			if hasFailed {
-				config.FailNum += 1
-				cases.Result = config.Fail
-			} else {
-				config.SuccessNum += 1
-				cases.Result = config.Success
 			}
 
 		} else {
 			cases.Result = syncRun(test.TestStep)
-			if cases.Result == config.Success {
-				config.SuccessNum += 1
-			} else if cases.Result == config.Fail {
-				config.FailNum += 1
-			} else {
-				config.AbortNum += 1
-			}
+		}
+
+		// 判断整体运行结果
+		if cases.Result == config.Success {
+			config.SuccessNum += 1
+		} else if cases.Result == config.Fail {
+			config.FailNum += 1
+		} else {
+			config.AbortNum += 1
 		}
 
 	casesTeardown:
 		// 测试步骤清除
+		fmt.Println("\t测试用例清除")
 		report.Step = 3
 		cases.Teardown.Result = syncRun(test.TearDown)
 		if cases.Teardown.Result != config.Success {
@@ -217,6 +207,22 @@ func (t *TestPackage) Run() logger.ReportHtml {
 	// 递归遍历子包
 	for _, child := range t.Child {
 		report.Child = append(report.Child, child.Run())
+	}
+
+packTeardown:
+	// 包结构清除
+	if t.SuitTearDown != nil {
+		// 记录运行进程
+		report.Step = 4
+		// 实例化消息对象
+		report.Teardown = new(logger.Steps)
+		report.Teardown.Times = time.Now().Format("2006-01-02 15:04:05")
+		// 异步调用
+		report.Teardown.Result = syncRun(t.SuitTearDown)
+		if report.Teardown.Result != config.Success {
+			// 记录清除失败次数
+			config.TearDownFailNum += 1
+		}
 	}
 
 	// 记录结束时间
@@ -233,12 +239,15 @@ func syncRun(f func()) (r int) {
 	go func() {
 		// 捕获异常
 		defer func() {
-			if err := recover(); err == nil {
-				r = config.Success
-			} else if err == "" {
-				r = config.Abort
+			if err := recover(); err != nil {
+				if err == "[CHECK_POINT FAIL]" {
+					r = config.Fail
+				} else {
+					r = config.Abort
+					logger.ErrorInfo(err.(error).Error())
+				}
 			} else {
-				r = config.Fail
+				r = config.Success
 			}
 			wg.Done()
 		}()
@@ -248,4 +257,18 @@ func syncRun(f func()) (r int) {
 	wg.Wait()
 
 	return
+}
+
+type colorPrinter string
+
+func (c colorPrinter) Red() string {
+	return fmt.Sprintf("\\x1b[0;%dm%s\\x1b[0m", 31, c)
+}
+
+func (c colorPrinter) Green() string {
+	return fmt.Sprintf("\\x1b[0;%dm%s\\x1b[0m", 32, c)
+}
+
+func (c colorPrinter) Yellow() string {
+	return fmt.Sprintf("\\x1b[0;%dm%s\\x1b[0m", 33, c)
 }

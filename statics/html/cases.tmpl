@@ -23,6 +23,7 @@
     </summary>
     <div class="step-desc s1">
         <!--   测试用例初始化     -->
+        {{if ne .Setup nil}}
         <div class="tests-setup s11">
             <div class="title">
                 <span class="name">{{.Name}} 用例初始化</span>
@@ -32,22 +33,20 @@
                 {{.Setup.Html}}
             </div>
         </div>
-
-        <!--   遍历数据驱动     -->
-        {{range $index, $value := .Ddts}}
-        <div class="tests-cases s11">
-            <div class="title">
-                <span class="name">子测试 {{$index}}</span>
-                {{template "steps_result.tmpl" $value.Result}}
-            </div>
-            <div class="desc">
-                {{$value.Html}}
-            </div>
-        </div>
         {{end}}
 
+        <div class="tests-cases s11">
+            <div class="title">
+                <span class="name">测试步骤</span>
+                {{template "steps_result.tmpl" .Step.Result}}
+            </div>
+            <div class="desc">
+                {{.Step.Html}}
+            </div>
+        </div>
 
         <!--   测试用例清除     -->
+        {{if ne .Teardown nil}}
         <div class="tests-teardown s11">
             <div class="title">
                 <span class="name">{{.Name}} 用例清除</span>
@@ -57,6 +56,7 @@
                 {{.Teardown.Html}}
             </div>
         </div>
+        {{end}}
     </div>
 
 </details>

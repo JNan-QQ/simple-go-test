@@ -12,14 +12,11 @@ var selectBy config.By = 0
 var selectValue = ""
 
 func main() {
-	file := logger.Logger()
-	defer func() {
-		_ = file.Close()
-	}()
+	logger.Logger()
 
 	testTree = *testTree.SelectBy(selectBy, selectValue)
 
-	config.GSTORE.SetItem("caseNum", testTree.Num())
+	config.AllNum = testTree.Num()
 
 	report := testTree.Run()
 

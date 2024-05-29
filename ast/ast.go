@@ -174,12 +174,16 @@ func (t *TestPackAst) ToAst() *ast.CompositeLit {
 func Find(root string) *TestPackAst {
 	astPack := new(TestPackAst)
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		// 统一路径分隔符
+		path = strings.ReplaceAll(path, "\\", "/")
+		// 格式化包路径
+		packPath := strings.TrimPrefix(path, strings.TrimSuffix(root, config.CasesDir))
 		if d.IsDir() {
 			// 子包深度
-			deep := len(strings.Split(strings.ReplaceAll(path, "\\", "/"), "/"))
+			deep := len(strings.Split(packPath, "/"))
 
 			// 包名
-			config.PackageNames = append(config.PackageNames, strings.ReplaceAll(path, "\\", "/"))
+			config.PackageNames = append(config.PackageNames, packPath)
 
 			var astP = astPack
 			for i := 1; i < deep; i++ {
@@ -191,7 +195,7 @@ func Find(root string) *TestPackAst {
 			}
 		} else {
 			// 文件目录深度
-			deep := len(strings.Split(strings.ReplaceAll(filepath.Dir(path), "\\", "/"), "/"))
+			deep := len(strings.Split(filepath.Dir(packPath), "/"))
 			var astP = astPack
 			for i := 1; i < deep; i++ {
 				astP = astP.children[len(astP.children)-1]
@@ -229,12 +233,19 @@ func readAst(path string, t *TestPackAst) {
 				t.addSuitMethod(packName, n.Name.Name, false)
 			}
 		case *ast.TypeSpec:
-			ty, ok := n.Type.(*ast.SelectorExpr)
-			if !ok {
-				return true
-			}
-			if ty.Sel.Name == "Test" {
-				t.addStruct(packName, n.Name.Name)
+			switch v := n.Type.(type) {
+			case *ast.StructType:
+				for _, field := range v.Fields.List {
+					vv := field.Type.(*ast.SelectorExpr)
+					if vv.X.(*ast.Ident).Name == "runner" && vv.Sel.Name == "Test" {
+						t.addStruct(packName, n.Name.Name)
+						break
+					}
+				}
+			case *ast.SelectorExpr:
+				if v.X.(*ast.Ident).Name == "runner" && v.Sel.Name == "Test" {
+					t.addStruct(packName, n.Name.Name)
+				}
 			}
 		}
 		return true

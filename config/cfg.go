@@ -58,6 +58,9 @@ const (
 type _GlobalStore map[string]interface{}
 
 func (g _GlobalStore) SetItem(key string, value interface{}) {
+	if g == nil {
+		g = make(_GlobalStore)
+	}
 	g[key] = value
 }
 
