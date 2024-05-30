@@ -42,12 +42,12 @@ func Logger() {
 	log.SetFlags(0)
 }
 
-var ReportHtmls *ReportHtml = &ReportHtml{}
+var Reporthtml *ReportHtml = &ReportHtml{}
 
 // INFO 提示信息，同时输出到终端和文件，换行输出
 func INFO(msg string) {
 	log.Println(msg)
-	addHtml(fmt.Sprintf("<p class=\"s%d info\">%s</p>", ReportHtmls.Step, msg))
+	addHtml(fmt.Sprintf("<p class=\"info\">%s</p>", msg))
 }
 
 // STEP 步骤信息
@@ -57,11 +57,11 @@ func STEP(step int, msg string) {
 }
 
 // CHECK_POINT 检查点，如果allowRun == true,仅记录，继续运行
-func CHECK_POINT(msg string, check bool, allowRun bool) {
+func CHECK_POINT(msg string, check bool, allowSkip bool) {
 	if check {
 		log.Printf("[CHECK_POINT PASS] %s", msg)
 		addHtml(fmt.Sprintf(
-			"<p class=\"check-point\"><span class=\"success\">[CHECK_POINT PASS]</span> %s</p>",
+			"<p class=\"check-point\"><span class=\"pass\">[CHECK_POINT PASS]</span> %s</p>",
 			msg),
 		)
 	} else {
@@ -71,39 +71,33 @@ func CHECK_POINT(msg string, check bool, allowRun bool) {
 			msg),
 		)
 	}
-	if !check && !allowRun {
+	if !check && !allowSkip {
 		panic("[CHECK_POINT FAIL]")
 	}
 }
 
 func ErrorInfo(msg string) {
 	addHtml(fmt.Sprintf("<p class=\"fail\">%s</p>", msg))
+	fmt.Println(msg)
 }
 
 func addHtml(msg string) {
-
-	switch ReportHtmls.Step {
+	switch Reporthtml.Step {
 	case 0:
-		if ReportHtmls.Setup == nil {
-			ReportHtmls.Setup = new(Steps)
-		}
-		ReportHtmls.Setup.addStep(msg)
+		Reporthtml.Setup.addStep(msg)
 	case 1:
-		ReportHtmls.Cases[len(ReportHtmls.Cases)-1].Setup.addStep(msg)
+		Reporthtml.Cases[len(Reporthtml.Cases)-1].Setup.addStep(msg)
 	case 2:
-		sc := ReportHtmls.Cases[len(ReportHtmls.Cases)-1].StepCases
+		sc := Reporthtml.Cases[len(Reporthtml.Cases)-1].StepCases
 		if sc == nil {
-			ReportHtmls.Cases[len(ReportHtmls.Cases)-1].StepCases = &Steps{Html: template.HTML(msg)}
+			Reporthtml.Cases[len(Reporthtml.Cases)-1].StepCases = &Steps{Html: template.HTML(msg)}
 		} else {
-			ReportHtmls.Cases[len(ReportHtmls.Cases)-1].StepCases.addStep(msg)
+			Reporthtml.Cases[len(Reporthtml.Cases)-1].StepCases.addStep(msg)
 		}
 	case 3:
-		ReportHtmls.Cases[len(ReportHtmls.Cases)-1].Setup.addStep(msg)
+		Reporthtml.Cases[len(Reporthtml.Cases)-1].Teardown.addStep(msg)
 	case 4:
-		if ReportHtmls.Teardown == nil {
-			ReportHtmls.Teardown = new(Steps)
-		}
-		ReportHtmls.Teardown.addStep(msg)
+		Reporthtml.Teardown.addStep(msg)
 	}
 }
 
@@ -113,11 +107,19 @@ type Steps struct {
 	Times  string
 }
 
-func (s Steps) addStep(h string) {
+func (s *Steps) time() {
+	if s.Times == "" {
+		s.Times = time.Now().Format("2006-01-02 15:04:05")
+	}
+}
+
+func (s *Steps) addStep(h string) {
+	s.time()
 	s.Html += template.HTML(h)
 }
 
-func (s Steps) setResult(r int) {
+func (s *Steps) setResult(r int) {
+	s.time()
 	s.Result = r
 }
 
@@ -125,7 +127,7 @@ type ReportHtml struct {
 	Name     string
 	Setup    *Steps
 	Teardown *Steps
-	Cases    []TestCases
+	Cases    []*TestCases
 	Child    []ReportHtml
 	Step     int
 	Times    int64

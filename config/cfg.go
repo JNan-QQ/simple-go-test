@@ -16,16 +16,17 @@ import (
 )
 
 const (
-	Version = "v1.0.0"
+	Version = "v0.0.1"
 )
 
 var (
-	Lang            = "zh"
-	CasesDir        = "cases"
-	PackageNames    []string
-	ReportName      string = "测试报告"
-	FilterBy        By
-	FilterValue     string
+	Lang         = "zh"
+	CasesDir     = "cases"
+	PackageNames []string
+	ReportName   string = "测试报告"
+)
+
+var (
 	SuccessNum      int
 	AbortNum        int
 	FailNum         int

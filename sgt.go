@@ -11,30 +11,35 @@
 package main
 
 import (
+	"bufio"
+	"cmp"
 	"embed"
 	"flag"
 	"fmt"
 	"gitee.com/jn-qq/simple-go-test/ast"
 	"gitee.com/jn-qq/simple-go-test/config"
+	"io"
 	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"slices"
 	"strings"
+	"sync"
 )
 
 type _args struct {
 	version        bool
 	new            string
 	autoOpenReport bool
-	reportTitle    string
 	test           string
 	pkg            string
 	tag            string
 	tagNot         string
 	run            bool
+	collect        bool
 }
 
 var args = new(_args)
@@ -43,15 +48,16 @@ var args = new(_args)
 var FS embed.FS
 
 func main() {
-	flag.BoolVar(&args.version, "version", false, "build version")
-	flag.StringVar(&config.Lang, "lang", "zh", "language")
-	flag.StringVar(&args.new, "new", "", "create new case project")
-	//flag.BoolVar(&args.autoOpenReport, "auto-open-report", false, "auto open report")
-	flag.StringVar(&config.ReportName, "report-title", "测试报告", "report title")
-	flag.StringVar(&args.test, "test", "", "用例名称过滤")
-	flag.StringVar(&args.pkg, "pkg", "", "包名过滤")
-	flag.StringVar(&args.tag, "tag", "", "tag过滤")
-	flag.StringVar(&args.tagNot, "tagNot", "", "tag反向过滤")
+	flag.BoolVar(&args.version, "version", false, "版本")
+	//flag.StringVar(&config.Lang, "lang", "zh", "language")
+	flag.StringVar(&args.new, "new", "", "新建一个测试项目")
+	flag.BoolVar(&args.collect, "collect", false, "收集测试用例")
+	flag.BoolVar(&args.autoOpenReport, "auto-open-report", true, "自动打开报告")
+	flag.StringVar(&config.ReportName, "report-title", "测试报告", "报告标题")
+	flag.StringVar(&args.test, "test", "", "用例名称过滤,支持正则表达式")
+	flag.StringVar(&args.pkg, "pkg", "", "包名过滤,支持正则表达式")
+	flag.StringVar(&args.tag, "tag", "", "tag过滤,支持正则表达式")
+	flag.StringVar(&args.tagNot, "tagNot", "", "tag反向过滤,支持正则表达式")
 	flag.BoolVar(&args.run, "run", false, "运行")
 	flag.Parse()
 
@@ -62,9 +68,9 @@ func main() {
 	}
 
 	// 设置语言
-	if !slices.Contains([]string{"zh", "en"}, config.Lang) {
-		config.Lang = "zh"
-	}
+	//if !slices.Contains([]string{"zh", "en"}, config.Lang) {
+	//	config.Lang = "zh"
+	//}
 
 	// 新建测试项目
 	if args.new != "" {
@@ -72,39 +78,99 @@ func main() {
 		return
 	}
 
-	// 整理过滤条件
-	if args.tag != "" {
-		config.FilterBy = config.ByTagName
-		config.FilterValue = args.tag
-	} else if args.tagNot != "" {
-		config.FilterBy = config.ByNotTagName
-		config.FilterValue = args.tagNot
-	} else if args.test != "" {
-		config.FilterBy = config.ByTestName
-		config.FilterValue = args.test
-	} else if args.pkg != "" {
-		config.FilterBy = config.ByPackageName
-		config.FilterValue = args.pkg
-	} else {
-		config.FilterBy = config.ByTagName
-		config.FilterValue = ""
+	if args.collect {
+		fmt.Println("\n开始格式化测试用例组织关系...")
+		astPack := ast.Find(config.CasesDir).ToAst()
+		fmt.Println("更新 main.go 文件")
+		ast.WriteToMain(astPack)
+		fmt.Println("格式化完成！")
 	}
 
-	fmt.Println("\n\n开始格式化测试用例组织关系...")
-	astPack := ast.Find(config.CasesDir).ToAst()
-	fmt.Println("更新 main.go 文件")
-	ast.WriteToMain(astPack)
-	fmt.Println("格式化完成！")
+	// 整理过滤条件
+	if args.tag != "" {
+		ast.WriteToMain(nil, int(config.ByTagName), args.tag)
+		fmt.Println("过滤设置成功")
+	} else if args.tagNot != "" {
+		ast.WriteToMain(nil, int(config.ByNotTagName), args.tagNot)
+		fmt.Println("过滤设置成功")
+	} else if args.test != "" {
+		ast.WriteToMain(nil, int(config.ByTestName), args.test)
+		fmt.Println("过滤设置成功")
+	} else if args.pkg != "" {
+		ast.WriteToMain(nil, int(config.ByPackageName), args.pkg)
+		fmt.Println("过滤设置成功")
+	}
 
 	if args.run {
 		fmt.Printf("%s\n * simple-go-test %s   https://gitee.com/JNan-QQ/simple-go-test *\n%s\n",
 			strings.Repeat(" *", 34), config.Version, strings.Repeat(" *", 34))
 
 		fmt.Println("开始运行 main.go 文件")
-		_ = exec.Command("go", "run", "main.go").Run()
+		execCommand()
+	}
+
+	if args.autoOpenReport {
+		var cmd string
+		var cArgs []string
+		switch runtime.GOOS {
+		case "linux":
+			cmd = "xdg-open"
+		case "windows":
+			cmd = "cmd"
+			cArgs = []string{"/c", "start"}
+		case "darwin":
+			cmd = "open"
+		default:
+			panic("未知运行平台，无法自动打开！")
+		}
+		// 获取文件路径
+		glob, _ := filepath.Glob("logs/*.html")
+		if len(glob) == 0 {
+			panic("未生成报告")
+		}
+		slices.SortFunc(glob, func(a, b string) int {
+			return cmp.Compare(b, a)
+		})
+		rp, _ := filepath.Abs(glob[0])
+		cArgs = append(cArgs, rp)
+		_ = exec.Command(cmd, cArgs...).Start()
 	}
 }
 
+// 执行main文件，实时获取输出
+func execCommand() {
+	cmd := exec.Command("go", "run", "main.go")
+
+	// 结果输出到管道
+	stdout, _ := cmd.StdoutPipe()
+	stderr, _ := cmd.StderrPipe()
+	if err := cmd.Start(); err != nil {
+		panic(err)
+	}
+
+	printer := func(rb io.Reader, w *sync.WaitGroup) {
+		defer w.Done()
+		reader := bufio.NewReader(rb)
+		for {
+			read, _, err := reader.ReadLine()
+			if err != nil || err == io.EOF {
+				return
+			}
+			fmt.Println(string(read))
+		}
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go printer(stdout, &wg)
+	go printer(stderr, &wg)
+
+	if err := cmd.Wait(); err != nil {
+		panic(err)
+	}
+}
+
+// 复制示例项目
 func copyDemo(p string) {
 	fmt.Println("开始创建项目...")
 	abs, _ := filepath.Abs(p)

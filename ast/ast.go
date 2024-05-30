@@ -253,7 +253,7 @@ func readAst(path string, t *TestPackAst) {
 }
 
 // WriteToMain 更新import TestObject 保存到main.go
-func WriteToMain(v *ast.CompositeLit) {
+func WriteToMain(v *ast.CompositeLit, selects ...any) {
 	file, err := filepath.Abs("main.go")
 	if err != nil {
 		panic(err)
@@ -267,18 +267,26 @@ func WriteToMain(v *ast.CompositeLit) {
 	ast.Inspect(f, func(node ast.Node) bool {
 		switch n := node.(type) {
 		case *ast.GenDecl:
-			if n.Tok == token.IMPORT {
-				// 查找有没有import context包
-				addImport(n, config.PackageNames...)
-			} else if n.Tok == token.VAR {
-				x := n.Specs[0].(*ast.ValueSpec)
-				if x.Names[0].Name == "testTree" {
-					x.Values[0] = v
-				} else if x.Names[0].Name == "selectBy" {
-					x.Values[0].(*ast.BasicLit).Value = strconv.Itoa(int(config.FilterBy))
-				} else if x.Names[0].Name == "selectValue" {
-					x.Values[0].(*ast.BasicLit).Value = strconv.Quote(config.FilterValue)
+			if v != nil {
+				if n.Tok == token.IMPORT {
+					// 查找有没有import context包
+					addImport(n, config.PackageNames...)
+				} else if n.Tok == token.VAR {
+					x := n.Specs[0].(*ast.ValueSpec)
+					if x.Names[0].Name == "testTree" && v != nil {
+						x.Values[0] = v
+					}
 				}
+			} else if len(selects) == 2 {
+				if n.Tok == token.VAR {
+					x := n.Specs[0].(*ast.ValueSpec)
+					if x.Names[0].Name == "selectBy" && selects != nil {
+						x.Values[0].(*ast.BasicLit).Value = strconv.Itoa(selects[0].(int))
+					} else if x.Names[0].Name == "selectValue" {
+						x.Values[0].(*ast.BasicLit).Value = strconv.Quote(selects[1].(string))
+					}
+				}
+
 			}
 		}
 		return true

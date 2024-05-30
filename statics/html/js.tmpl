@@ -31,3 +31,70 @@ new Chart(document.getElementById('myChart-doughnut'), {
         }]
     }
 })
+
+// 点击按钮，返回顶部
+function topFunction() {
+    document.body.scrollTop = 0;
+    document.documentElement.scrollTop = 0;
+}
+
+// 当网页向下滑动 20px 出现"返回顶部" 按钮
+window.onscroll = function () {
+    if (document.body.scrollTop > 20 || document.documentElement.scrollTop > 20) {
+        document.getElementById("myBtn").style.display = "block";
+    } else {
+        document.getElementById("myBtn").style.display = "none";
+    }
+};
+
+
+let failList = [];
+let failIndex = 0;
+
+
+window.onload = function () {
+    failList = document.querySelectorAll(".r.fail, .r.abort, .check-point .fail")
+}
+
+function jumpElement(next = false) {
+    if (failList.length === 0) {
+        return
+    }
+    window.scrollTo({
+        top: failList[failIndex].getBoundingClientRect().top + window.pageYOffset - 100,
+        behavior: "smooth"
+    })
+    if (next) {
+        failIndex+=1
+        if (failIndex>=failList.length){
+            failIndex = 0
+        }
+    } else {
+        failIndex -= 1
+        if (failIndex<0){
+            failIndex = failList.length - 1
+        }
+    }
+}
+
+let isUnfold = true;
+
+function unfold(){
+    let uList = document.getElementsByTagName("details")
+    if (isUnfold){
+        for (let uListElement of uList) {
+            if (!uListElement.open){
+                uListElement.open = true
+            }
+        }
+        document.getElementById("unfold").innerText = "折 叠"
+    }else {
+        for (let uListElement of uList) {
+            if (uListElement.open){
+                uListElement.open = false
+            }
+        }
+        document.getElementById("unfold").innerText = "展 开"
+    }
+    isUnfold = !isUnfold
+}

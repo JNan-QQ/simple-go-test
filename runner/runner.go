@@ -21,7 +21,7 @@ import (
 )
 
 type TestInterface interface {
-	Init() Test
+	Init() *Test
 	SetUp()
 	TearDown()
 	TestStep()
@@ -48,6 +48,7 @@ func (t *TestPackage) SelectBy(by config.By, reg string) *TestPackage {
 	if reg == "" {
 		return t
 	}
+
 	switch by {
 	case config.ByTagName, config.ByNotTagName:
 		// 遍历测试用例tag
@@ -68,8 +69,7 @@ func (t *TestPackage) SelectBy(by config.By, reg string) *TestPackage {
 	case config.ByTestName:
 		for i := len(t.Tests) - 1; i >= 0; i-- {
 			ts := t.Tests[i].Init()
-			hs, _ := regexp.MatchString(reg, ts.Name)
-			if !hs {
+			if hs, _ := regexp.MatchString(reg, ts.Name); !hs {
 				t.Tests = slices.Delete(t.Tests, i, i+1)
 			}
 		}
@@ -96,50 +96,48 @@ func (t *TestPackage) SelectBy(by config.By, reg string) *TestPackage {
 		}
 	}
 
-	if (t.Child == nil || len(t.Child) == 0) && (len(t.Tests) == 0 || t.Tests == nil) {
+	// 判断是否有测试用例
+	if (t.Child == nil || len(t.Child) == 0) && (t.Tests == nil || len(t.Tests) == 0) {
 		return nil
-	} else {
-		return t
 	}
+
+	return t
 }
 
 func (t *TestPackage) Num() int {
-	config.AllNum = len(t.Tests)
+	num := len(t.Tests)
 	for _, tp := range t.Child {
-		config.AllNum += tp.Num()
+		num += tp.Num()
 	}
-	return config.AllNum
+	return num
 }
 
 // Run 运行测试
 func (t *TestPackage) Run() logger.ReportHtml {
 
 	report := logger.ReportHtml{Name: t.Name}
-	logger.ReportHtmls = &report
+	logger.Reporthtml = &report
 	// 记录开始时间
 	report.Times = time.Now().Unix()
 
-	fmt.Println("进入包：" + t.Name)
+	fmt.Println("\n进入包：" + t.Name)
 
 	// 包结构初始化
 	if t.SuitSetUp != nil {
-		fmt.Println("\t包初始化... ")
 		// 记录运行进程
 		report.Step = 0
 		// 实例化消息对象
 		report.Setup = new(logger.Steps)
-		// time
-		report.Setup.Times = time.Now().Format("2006-01-02 15:04:05")
 		// 异步调用
 		report.Setup.Result = syncRun(t.SuitSetUp)
 		// 初始化失败,停止后续运行
 		if report.Setup.Result != config.Success {
 			// 记录初始化失败次数
 			config.SetupFailNum += 1
-			fmt.Println(colorPrinter(" FAIL").Red())
-			goto packTeardown
+			fmt.Printf("%s 包初始化结果：%s\n", t.Name, colorPrinter(report.Setup.Result))
+			goto PTD
 		}
-		fmt.Println("\t包初始化：" + colorPrinter(" PASS").Green())
+		fmt.Printf("%s 包初始化结果：%s\n", t.Name, colorPrinter(report.Setup.Result))
 	}
 
 	// 遍历包下测试用例
@@ -150,25 +148,28 @@ func (t *TestPackage) Run() logger.ReportHtml {
 		fmt.Println("\n\n运行测试用例：" + ts.Name)
 
 		// 实例化测试结果对象
-		cases := &logger.TestCases{Name: ts.Name}
-		report.Cases = append(report.Cases, *cases)
-		cases.Times = time.Now().Format("2006-01-02 15:04:05")
+		cases := &logger.TestCases{
+			Name:      ts.Name,
+			Setup:     new(logger.Steps),
+			Teardown:  new(logger.Steps),
+			StepCases: new(logger.Steps),
+			Times:     time.Now().Format("2006-01-02 15:04:05"),
+		}
+		report.Cases = append(report.Cases, cases)
 
-		fmt.Println("\t测试用例初始化")
 		// 测试用例初始化
 		report.Step = 1
-		cases.Setup.Result = syncRun(test.TestStep)
+		cases.Setup.Result = syncRun(test.SetUp)
 		if cases.Setup.Result != config.Success {
 			config.SetupFailNum += 1
 			cases.Result = config.Abort
 			config.AbortNum += 1
 			// 初始化失败跳过测试，执行清除
-			goto casesTeardown
+			goto CTD
 		}
 
 		// 运行测试步骤
 		report.Step = 2
-		report.Cases[len(report.Cases)-1].StepCases = new(logger.Steps)
 		if len(ts.DDT) > 0 {
 			// 数据驱动不为空
 			// 遍历数据驱动，取出数据
@@ -176,32 +177,36 @@ func (t *TestPackage) Run() logger.ReportHtml {
 				// 将数据赋值给 Para 便于 TestStep 中用户调用
 				logger.INFO(fmt.Sprintf("\n运行子测试：%d", i))
 				ts.Para = ddt
-				if cases.Result = syncRun(test.TestStep); cases.Result != config.Success {
+				if cases.StepCases.Result = syncRun(test.TestStep); cases.StepCases.Result != config.Success {
 					break
 				}
 			}
-
 		} else {
-			cases.Result = syncRun(test.TestStep)
+			cases.StepCases.Result = syncRun(test.TestStep)
 		}
 
 		// 判断整体运行结果
-		if cases.Result == config.Success {
+		if cases.StepCases.Result == config.Success {
+			cases.Result = config.Success
 			config.SuccessNum += 1
-		} else if cases.Result == config.Fail {
+		} else if cases.StepCases.Result == config.Fail {
+			cases.Result = config.Fail
 			config.FailNum += 1
 		} else {
+			cases.Result = config.Abort
 			config.AbortNum += 1
 		}
 
-	casesTeardown:
+	CTD:
 		// 测试步骤清除
-		fmt.Println("\t测试用例清除")
 		report.Step = 3
 		cases.Teardown.Result = syncRun(test.TearDown)
 		if cases.Teardown.Result != config.Success {
 			config.TearDownFailNum += 1
 		}
+
+		fmt.Printf("测试用例 %s 运行结果：%s\n", ts.Name, colorPrinter(cases.Result))
+
 	}
 
 	// 递归遍历子包
@@ -209,20 +214,23 @@ func (t *TestPackage) Run() logger.ReportHtml {
 		report.Child = append(report.Child, child.Run())
 	}
 
-packTeardown:
+PTD:
 	// 包结构清除
 	if t.SuitTearDown != nil {
+		// 重新更新，避免 递归遍历子包 数据未更新
+		logger.Reporthtml = &report
 		// 记录运行进程
 		report.Step = 4
 		// 实例化消息对象
 		report.Teardown = new(logger.Steps)
-		report.Teardown.Times = time.Now().Format("2006-01-02 15:04:05")
 		// 异步调用
 		report.Teardown.Result = syncRun(t.SuitTearDown)
 		if report.Teardown.Result != config.Success {
 			// 记录清除失败次数
 			config.TearDownFailNum += 1
 		}
+
+		fmt.Printf("%s 包清除结果：%s\n", t.Name, colorPrinter(report.Teardown.Result))
 	}
 
 	// 记录结束时间
@@ -259,16 +267,15 @@ func syncRun(f func()) (r int) {
 	return
 }
 
-type colorPrinter string
-
-func (c colorPrinter) Red() string {
-	return fmt.Sprintf("\\x1b[0;%dm%s\\x1b[0m", 31, c)
-}
-
-func (c colorPrinter) Green() string {
-	return fmt.Sprintf("\\x1b[0;%dm%s\\x1b[0m", 32, c)
-}
-
-func (c colorPrinter) Yellow() string {
-	return fmt.Sprintf("\\x1b[0;%dm%s\\x1b[0m", 33, c)
+// 输出结果颜色
+func colorPrinter(r int) string {
+	var res string
+	if r == config.Success {
+		res = fmt.Sprintf("\x1b[0;%dm%s\x1b[0m", 32, "PASS")
+	} else if r == config.Fail {
+		res = fmt.Sprintf("\x1b[0;%dm%s\x1b[0m", 31, "FAIL")
+	} else if r == config.Abort {
+		res = fmt.Sprintf("\x1b[0;%dm%s\x1b[0m", 33, "ABORT")
+	}
+	return res
 }

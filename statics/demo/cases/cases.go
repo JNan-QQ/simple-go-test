@@ -23,9 +23,9 @@ func SuiteSetUp() {
 }
 
 func SuiteTearDown() {
-	logger.INFO("进行包 %cases 清除操作")
+	logger.INFO("进行包 cases 清除操作")
 	time.Sleep(5 * time.Second)
-	logger.INFO("包 %cases 清除完成")
+	logger.INFO("包 cases 清除完成")
 }
 
 // TestNum 实现接口 simple_go_test.TestInterface
@@ -34,12 +34,12 @@ type TestNum struct {
 }
 
 // Init 测试用例构造
-func (t *TestNum) Init() runner.Test {
+func (t *TestNum) Init() *runner.Test {
 	// 设置 返回
 	t.Name = "C0001"
 	t.Tags = []string{"cases", "冒烟测试", "num"}
 
-	return t.Test
+	return &t.Test
 }
 
 // SetUp 测试用例初始化
@@ -67,26 +67,26 @@ func (t *TestNum) TestStep() {
 // TestString 实现接口 simple_go_test.TestInterface
 type TestString runner.Test
 
-func (t TestString) Init() runner.Test {
+func (t *TestString) Init() *runner.Test {
 	// 设置 返回
 	t.Name = "C0002"
 	t.Tags = []string{"cases", "冒烟测试", "string"}
 	t.DDT = []any{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 
-	return runner.Test(t)
+	return (*runner.Test)(t)
 }
 
-func (t TestString) SetUp() {
+func (t *TestString) SetUp() {
 	logger.INFO("用例 C0002 初始化")
 	time.Sleep(5 * time.Second)
 }
 
-func (t TestString) TearDown() {
+func (t *TestString) TearDown() {
 	logger.INFO("用例 C0002 清除")
 	time.Sleep(5 * time.Second)
 }
 
-func (t TestString) TestStep() {
+func (t *TestString) TestStep() {
 	para := t.Para
 	time.Sleep(5 * time.Second)
 	logger.CHECK_POINT("数据小于6", para.(int) < 6, true)
