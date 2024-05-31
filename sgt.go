@@ -102,7 +102,7 @@ func main() {
 	}
 
 	if args.run {
-		fmt.Printf("%s\n * simple-go-test %s   https://gitee.com/JNan-QQ/simple-go-test *\n%s\n",
+		fmt.Printf("%s\n * simple-go-test  %s   https://gitee.com/jn-qq/simple-go-test *\n%s\n",
 			strings.Repeat(" *", 34), config.Version, strings.Repeat(" *", 34))
 
 		fmt.Println("开始运行 main.go 文件")
