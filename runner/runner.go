@@ -20,6 +20,7 @@ import (
 	"time"
 )
 
+// TestInterface 测试用例接口
 type TestInterface interface {
 	Init() *Test
 	SetUp()
@@ -27,6 +28,7 @@ type TestInterface interface {
 	TestStep()
 }
 
+// Test 测试用例类型
 type Test struct {
 	Name string
 	Tags []string
@@ -207,6 +209,17 @@ func (t *TestPackage) Run() logger.ReportHtml {
 
 		fmt.Printf("测试用例 %s 运行结果：%s\n", ts.Name, colorPrinter(cases.Result))
 
+		// 测试用例结束执行
+		if config.CasesEnd != nil {
+			go func() {
+				defer func() {
+					if err := recover(); err != nil {
+						fmt.Println(err)
+					}
+				}()
+				config.CasesEnd(ts.Name, cases.Result)
+			}()
+		}
 	}
 
 	// 递归遍历子包
@@ -235,6 +248,17 @@ PTD:
 
 	// 记录结束时间
 	report.Times = time.Now().Unix() - report.Times
+
+	if config.TestEnd != nil && t.Name == "cases" {
+		go func() {
+			defer func() {
+				if err := recover(); err != nil {
+					fmt.Println(err)
+				}
+			}()
+			config.TestEnd(config.AllNum, config.FailNum, config.SuccessNum, config.AbortNum, config.SetupFailNum, config.TearDownFailNum)
+		}()
+	}
 
 	return report
 }

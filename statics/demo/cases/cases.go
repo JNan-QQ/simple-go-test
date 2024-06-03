@@ -28,7 +28,7 @@ func SuiteTearDown() {
 	logger.INFO("包 cases 清除完成")
 }
 
-// TestNum 实现接口 simple_go_test.TestInterface
+// TestNum 实现接口 runner.TestInterface
 type TestNum struct {
 	runner.Test
 }
@@ -64,7 +64,7 @@ func (t *TestNum) TestStep() {
 	time.Sleep(5 * time.Second)
 }
 
-// TestString 实现接口 simple_go_test.TestInterface
+// TestString 实现接口 runner.TestInterface
 type TestString runner.Test
 
 func (t *TestString) Init() *runner.Test {
